@@ -1,0 +1,1037 @@
+May 20, 2026
+DOL ERISA EFAST2 ModernizationVendor Industry Day
+
+Agenda
+Company Overview
+EFAST2 Understanding
+A. Proposed Technical Architecture (Kiran)
+B. Security and Vulnerability Management (Kiran)
+C. Data Quality and Validation (Josh)
+D. Annual Rollover and Version Changes (Josh)
+E. AI Use in Development, PII Identification, and Testing (Pierre)
+F. Data Migration and Transition (Josh)
+G. Third-Party and Bulk Filing (Kiran)
+H. Contact Center (Don)
+Similar Application Demonstration and Fallback Video (Kiran)
+Government Areas of Interest (Kiran and team)
+Q&A
+
+2
+
+Company Overview
+3
+
+4
+Artificial Intelligence/Machine Learning
+Cloud Engineering
+& Modernization
+DevSecOps /
+Agile Transformation 
+Enterprises Data Services & Governance
+Enterprise 
+Custom App Dev
+AI/ML-driven automation and PII detection for high-volume federal filing systems (USPTO).
+Delivered platforms processing 20M+ transactions/day across 10+ petabytes of federal data.
+Deployed 100+ DevSecOps pipelines with FedRAMP, NIST 800-53, and continuous ATO support.
+Engineered enterprise data platforms supporting NARA’s 300M+ digital records catalog.
+Proven CMMI Level 5 processes, Exceptional CPARS ratings, and ISO 9001/27001 certifications.
+Satsyil Corp
+Satsyil Corp (Satsyil) is a CMMI Level 5, ISO 9001/27001 certified small business with 13+ years delivering mission-critical federal IT systems. We are a trusted SBA-certified innovator and trusted federal partner with excellent CPARS for high-volume federal filing systems, data modernization, and cloud-native DevSecOps. Contract Vehicle: GSA MAS (47QTCA18D009K)
+
+Prime Contractor
+
+
+
+
+EFAST2 Understanding
+5
+
+6
+Platform Scope
+Process 1M+ annual Form 5500 filings across all schedules
+Web portal (IFILE) for direct filer submissions
+Bulk API intake for third-party software providers
+Participant Acceptance Testing System (PATS)
+Public data search and dissemination portal
+Contact center supporting filers and software developers
+Secure distribution to DOL, IRS, PBGC, and NARA
+Annual form rollover and schema update management
+Key DOL Requirements
+99.99% availability with auto-scaling cloud infrastructure
+FedRAMP High/Moderate authorized hosting environment
+Zero Trust security with NIST SP 800-53 Rev. 5 controls
+Login.gov integration at IAL-1/IAL-2 and AAL2
+Pre-submission validation and real-time error feedback
+Configurable business rules with no-code annual updates
+Full audit trail and submission lifecycle traceability
+NACI-cleared staff with 30-day transition-in capability
+Key Requirements
+
+A. Proposed Technical Architecture
+7
+
+8
+Two Intake Channels
+IFILE Web Portal: browser-based submission UI for direct filers; WCAG 2.2 AA; Login.gov authentication at IAL-1/IAL-2
+Bulk Filing API: RESTful JSON-first with backward-compatible XML for third-party software providers; API key authentication
+All submissions enter a controlled SQS intake layer — decoupled from processing, durable, and loss-proof even under peak load
+Unique tracking ID issued immediately upon intake — filer receives acknowledgment before processing begins
+Pre-validation executes before formal acceptance: schema check, field-level rules, entity validation (EIN, plan number)
+AWS Step Functions orchestrate the processing pipeline: validate → process → distribute — exactly-once, auditable, stateless
+Validated filings distributed via encrypted SFTP/API to DOL, IRS, and PBGC per the IRD; NARA annual archive packages prepared in non-proprietary formats with full metadata
+Public data dissemination via OpenSearch-powered search portal — processed filings made accessible per disclosure requirements
+Processing Pipeline (5 Stages)
+① Intake: Submission received via IFILE or Bulk API; SQS queued; tracking ID issued; acknowledgment sent
+② Validate: Schema validated against DER; field-level, cross-field, and entity rules applied; errors returned with actionable guidance
+③ Process: Step Functions execute processing workflow; exactly-once delivery enforced via idempotency keys
+④ Acknowledge: Real-time status updates delivered to filer via API and dashboard at each milestone
+⑤ Distribute: Encrypted delivery to DOL, IRS, PBGC drop-boxes; NARA archive; OpenSearch public portal updated
+All data in motion: TLS 1.3 + FIPS-validated cryptography
+All data at rest: AWS KMS customer-managed keys
+Every stage logged with timestamp and audit record — full DOL visibility into pipeline at any moment
+A1. Form Intake, Processing & Distribution
+A1. Form Intake, Processing & Distribution
+
+9
+Core Application Components
+IFILE Web Portal: public-facing filing UI; WCAG 2.2 AA; Login.gov SSO; responsive design
+Bulk Filing API Service: RESTful JSON/XML intake; API key auth; rate limiting; developer portal
+Intake & Queue Layer: Amazon SQS + Step Functions; exactly-once delivery; DLQ exception handling
+Validation Engine: schema, field-level, cross-field, entity validation; driven by versioned DER metadata; same engine in PATS and production
+Processing Service: stateless microservices on EKS; auto-scaling; parallel filing execution
+Status & Acknowledgment Service: real-time tracking API; filer dashboard; webhook push updates
+Admin Configuration Panel: DOL-accessible no-code UI for schema and rule updates; government approval workflow
+Distribution Service: encrypted SFTP/API to DOL, IRS, PBGC; OpenSearch public portal; NARA archive
+Data Flows & Supporting Services
+Data flow direction: Intake → Validate → Process → Acknowledge → Distribute (single-direction, auditable at every stage)
+PATS Environment: production-mirrored sandbox for third-party certification; same validation engine and APIs
+Contact Center (AWS Connect + Lex IVR): CRM records tied to specific submission IDs; full call recording
+Amazon RDS (PostgreSQL): primary + read replicas; automated failover; FTI data in isolated encrypted repository
+ElastiCache (Redis): session management and validation result caching for high-throughput periods
+CloudWatch + PagerDuty: real-time monitoring; ops team alerted within 60 seconds of any anomaly
+AWS WAF + Shield: DDoS protection; CloudFront CDN offloads 90% of static traffic from origin
+All inter-service communication via private VPC endpoints — no public internet traversal for internal data flows
+A2. Application Components & Data Flows
+A2. Application Components & Data Flows
+
+10
+A2. Application Components & Data Flows
+A3. Integration Approach
+Five Integration Partners
+Login.gov via OIDC/SAML 2.0: IAL-1/IAL-2 and AAL2 for all public filers; PIV/HSPD-12 for government users; short-lived tokens and continuous session monitoring
+DOL, IRS & PBGC: validated filings transmitted via encrypted SFTP/API drop-box delivery per the IRD; TLS 1.3; retry logic ensures delivery even during downstream outages
+DOL Enterprise Services: Jira, SharePoint, and GitLab connected via VPC peering and private endpoints — no public internet traversal for internal data flows
+Third-Party Software Providers: RESTful JSON-first API with backward-compatible XML; developer portal with sandbox, docs, and code samples; PATS certification before production access
+NARA — Archival Delivery: annual archive packages in non-proprietary formats with structured metadata; hash-based integrity verification; FTI excluded per IRS Pub. 1075
+Contact Center (AWS Connect): CRM records tied to specific submission IDs; call recording and transcript search; real-time agent dashboards
+OpenSearch Public Portal: validated filings made searchable per public disclosure requirements; high-performance query API for researchers and third parties
+EFAST2 PATS Sandbox: production-mirrored environment replicating all APIs, validation logic, and processing workflows for third-party certification
+Integration Design Principles
+API-first, standards-based: all integrations use documented, versioned APIs — no proprietary connectors or undocumented dependencies
+Version-controlled with 90-day deprecation windows: external partners are never broken by an update; backward-compatible XML supported alongside JSON
+Zero public internet for internal flows: all DOL enterprise integrations routed through VPC private endpoints and peering
+Authenticated at every boundary: Login.gov for filers, PIV/HSPD-12 for government users, scoped API keys with NIST 800-63 lifecycle management for third parties
+Retry and confirmation at every integration point: delivery to IRS, PBGC, and DOL confirmed with receipts; automated retry with exponential backoff on failure
+Integration monitoring: CloudWatch tracks every outbound delivery; failed deliveries alert ops team within 60 seconds with structured metadata
+Tested before cutover: all IRS, PBGC, and DOL drop-box integrations fully tested and certified in staging before any production migration gate
+Exit-ready: all integration configurations and credentials exportable; no proprietary lock-in at any integration point
+
+11
+AWS GovCloud Hosting Environment
+AWS GovCloud (FedRAMP Moderate) — Satsyil’s proven environment at USPTO and NARA; authority to operate on day one
+Amazon EKS (Kubernetes): stateless microservices orchestrated across 3 Availability Zones for 99.99% uptime
+Amazon RDS PostgreSQL: primary + read replicas with automated Multi-AZ failover; FTI in isolated encrypted repository
+ElastiCache (Redis): session management and validation caching; reduces DB load during peak filing periods
+S3 + CloudFront CDN: static asset delivery with geographic caching; offloads 90% of traffic from origin
+AWS WAF + Shield Advanced: DDoS protection, bot mitigation, and OWASP rule enforcement at the edge
+VPC with private subnets: all internal services communicate via private endpoints — zero public internet exposure
+All data in transit: TLS 1.3 + FIPS-validated cryptography; at rest: AWS KMS customer-managed keys
+Deployment & Release Strategy
+Infrastructure as Code: Terraform + AWS CloudFormation — every environment (dev, test, staging, PATS, prod) reproducible and version-controlled
+GitLab CI/CD: fully automated build, SAST/DAST scan, test, and deploy pipeline — no manual deployment steps at any stage
+Blue/green deployments: zero-downtime releases with instant rollback by traffic shift to prior environment
+Separate isolated environments: Development, Test, PATS (third-party sandbox), Staging, Production — each independently deployable
+Continuous ATO (cATO): security controls validated in pipeline; no security gate requires manual sign-off to release
+Deployment frequency: multiple times per sprint; production changes coordinated with DOL change management process
+Rollback SLA: any production deployment rolled back within 5 minutes via automated traffic shift if health checks fail
+NACI-cleared staff maintain all production access; least-privilege IAM roles; all access logged and auditable
+A4. Hosting & Deployment Approach
+A4. Hosting & Deployment
+
+12
+Auto-Scaling Architecture
+Auto-scaling triggers at 70% CPU across EKS node groups, RDS read replicas, and SQS consumers — zero manual intervention
+A5. Scalability & Reliability
+CloudFront CDN offloads 90% of static traffic; dramatically reduces origin load during peak filing seasons
+Amazon SQS intake layer absorbs submission spikes without any degradation to the filer-facing API
+RDS read replicas handle concurrent validation queries without write contention during peak periods
+99.99% uptime SLA: RTO < 1 hour; RPO < 15 minutes; automated Multi-AZ failover with no manual steps
+Multi-AZ deployment: loss of any single Availability Zone causes zero service disruption or data loss
+Chaos engineering practices test failure modes in staging before every peak season deployment
+Peak Season Readiness
+Columbus Day peak filing period: load-tested annually with JMeter/Locust simulating maximum concurrent filer volume
+New Year’s Day form rollover: tested and executed with zero downtime; contact center staffed for filer questions
+Staffing surge plan: predictive workforce management scales contact center agents ahead of peak filing deadlines
+Performance baselines re-established each sprint; degradation detected before it reaches production
+CloudWatch dashboards: real-time visibility into queue depth, processing latency, error rates, and scaling events
+PagerDuty integration: on-call ops team alerted within 60 seconds of any threshold breach or anomaly
+Quarterly DR drills: full failover exercised and documented; results reviewed with DOL
+Public-facing SLA transparency: DOL can view uptime and performance metrics via shared CloudWatch dashboard
+A5. Scalability & Reliability
+A5. Scalability & Reliability
+
+13
+Capacity & Architecture Design
+System sized for 1.4M annual filings with burst headroom — well above the 1M DOL requirement
+SQS message queuing absorbs any submission spike without degrading the intake API — filers never experience slowdowns
+Step Functions process each filing independently and in parallel — not sequentially; throughput scales linearly with load
+Multi-form, multi-year concurrent processing: Form 5500, 5500-SF, 5500-EZ, and all schedules handled simultaneously
+API rate limiting and throttling protect system integrity while maximizing legitimate submission throughput
+Bulk filing API accepts batch submissions — third parties submit thousands of filings per call with structured responses
+Processing workers auto-scale horizontally: each EKS pod handles multiple concurrent filing workflows
+Database read replicas absorb validation query load — no write contention during peak concurrent submission periods
+Proven Scale — Satsyil Track Record
+USPTO EDS Platform (Satsyil-built): 20M+ transactions per day — EFAST2’s 1.4M annual filings is <1% of our demonstrated daily capacity
+NARA NAC Platform (Satsyil-built): 300M+ digital records processed, validated, and publicly served with 99.8%+ uptime
+Both platforms operate 24x7 with automated deployments, zero-downtime releases, and proactive monitoring
+Annual load testing: JMeter and Locust simulate Columbus Day peak — system must pass before deployment is approved
+Capacity planning review conducted annually ahead of each filing season in coordination with DOL
+Queue depth monitoring: CloudWatch alarms trigger auto-scaling before filers experience any degradation
+Cost-efficient at scale: auto-scaling scales DOWN during off-peak periods — DOL pays only for capacity used
+Throughput SLA: 95th percentile filing acknowledgment issued within 30 seconds of submission receipt at peak load
+A6. High-Volume Processing (1M+ Filings/Year)
+A6. High-Volume Processing (1M+ Filings)
+
+14
+Queuing & Reliability Controls
+Amazon SQS intake queue: every submission durably queued the moment it is received — no filing is lost even if all downstream services are temporarily unavailable
+Exactly-once delivery: SQS + Step Functions use idempotency keys — each filing is processed once and only once; no duplicates, no skipped filings
+Automated retries with exponential backoff: transient failures (network blips, DB timeouts) self-heal automatically without any human intervention
+Dead-letter queues (DLQs): after configurable retry exhaustion, failed filings routed to DLQ; ops team alerted within 60 seconds with filing ID, failure reason, and processing stage
+Pre-submission validation: malformed or non-compliant submissions rejected before entering the processing queue — dramatically reduces exception volume at source
+Duplicate detection: filing fingerprint hashing prevents double-processing of the same submission; idempotent resubmission supported
+End-to-end traceability: every filing has a unique tracking ID from intake through distribution; every status transition logged with timestamp and audit record
+DOL visibility: shared CloudWatch dashboard provides real-time view of queue depth, processing throughput, error rates, and DLQ volume at any moment
+Exception Handling Workflow
+Exception triage: DLQ alerts include structured metadata — filing ID, submitter, form type, failure code, processing stage — enabling rapid root cause analysis
+Automated remediation: common exception classes (schema version mismatch, temporary downstream outage) trigger automated resolution workflows without ops team involvement
+Manual remediation: ops team reviews DLQ entries; corrective action documented in Jira with DOL visibility; filing reprocessed once issue resolved
+Filer notification: if a filing cannot be processed after all retries, the filer receives a structured error notification with specific guidance for resubmission
+Quality control gates: automated validation checks at each pipeline stage prevent downstream propagation of bad data
+Operational metrics reviewed weekly: exception rates, DLQ volume, retry frequency, and resolution time tracked against SLA targets
+Continuous improvement: recurring exception patterns trigger root cause analysis and permanent system fix — not just one-time remediation
+Zero silent failures: every filing that enters the system either reaches a successful distribution state or generates a tracked, alerted, documented exception — no filing disappears
+A7. Quality Controls & Exception Handling
+A7. Quality Controls & Exception Handling
+
+B. Security and Vulnerability Management
+15
+
+16
+Filer & Government Authentication
+Login.gov via OIDC/SAML 2.0 for all public filers at IAL-1/IAL-2 and AAL2 — federally mandated identity standard
+PIV/HSPD-12 smart card authentication for all government users via AWS IAM Identity Center federation
+MFA enforced on every session — no single-factor access to any system component
+Short-lived JWT tokens with automatic expiry; continuous session monitoring flags anomalous behavior
+Role-based access control (RBAC): DOL staff, contractor staff, filers, and third parties each have scoped, least-privilege roles
+Admin panel access requires DOL-approved credentials with full audit trail on every configuration change
+Government user accounts provisioned through DOL identity management with mandatory periodic recertification
+Zero standing access: all privileged access time-limited and requires just-in-time approval workflow
+Third-Party & API Authorization
+Third-party software providers issued scoped API keys after successful PATS certification only — not before
+API keys carry minimum necessary permissions; cannot be elevated without new certification cycle
+NIST SP 800-63 credential lifecycle management: rotation, revocation, and audit logging for all API credentials
+API key revocation takes effect within seconds — immediate response to any compromise or compliance violation
+All authentication events logged to tamper-evident audit store; available for DOL review at any time
+Webhook authentication: all outbound callbacks signed with HMAC-SHA256 — recipients can verify Satsyil origin
+OAuth 2.0 client credentials flow for machine-to-machine integrations (IRS, PBGC); no shared secrets in transit
+Quarterly access reviews: all active API keys and user accounts reviewed and recertified with DOL participation
+B1. Authentication & Authorization
+B1. Authentication & Authorization
+
+17
+Encryption & Data Minimization
+All data in transit encrypted with TLS 1.3 using FIPS 140-2 validated cryptographic modules — no exceptions
+All data at rest encrypted with AWS KMS customer-managed keys (CMKs); keys rotated annually
+Form 5558 FTI data stored in dedicated, isolated repository — access controlled, encrypted, and audited separately per IRS Pub. 1075
+Data minimization: only fields required by the DER are collected; no additional PII captured beyond regulatory mandate
+PII/FTI automatically detected and redacted from all logs, error messages, and API responses before storage
+Supervised ML models (SageMaker) identify and mask PII in submission data prior to public release
+Database encryption at column level for all sensitive fields (SSN, EIN, account numbers)
+S3 bucket policies enforce server-side encryption (SSE-KMS) and block all public access
+FTI & Regulatory Compliance
+IRS Publication 1075 compliance: FTI data in fully segregated, audited environment with access limited to authorized personnel
+NIST SP 800-53 Rev. 5 controls implemented and continuously validated via automated compliance scanning
+FedRAMP Moderate authorization maintained; all new services evaluated against FedRAMP control baseline before deployment
+Privacy Impact Assessment (PIA) maintained and updated with any new data element or processing change
+Data retention policies enforced automatically: records purged per DOL/NARA retention schedule
+Cross-region replication disabled for FTI data — data sovereignty enforced within approved AWS GovCloud regions only
+Secure deletion: data purged using NIST 800-88 compliant methods; deletion confirmed with audit record
+Annual third-party penetration test targeting data protection controls; findings remediated before next filing season
+B2. Protection of Sensitive Data
+B2. Protection of Sensitive Data
+
+18
+Comprehensive Audit Coverage
+Every submission logged from intake through distribution: filing ID, submitter, timestamp, processing stage, and outcome
+Every authentication event logged: login, logout, failed attempts, MFA completions, token issuance and expiry
+Every admin configuration change logged: who made it, what changed, when, and government approval reference
+Every API call logged with caller identity, endpoint, payload hash, response code, and latency
+Every file access to FTI repository logged with user ID, timestamp, file identifier, and access purpose
+Every downstream delivery logged: file sent to IRS, PBGC, DOL, NARA with delivery confirmation and receipt timestamp
+Dead-letter queue entries logged with full failure context — no silent failures, every exception is traceable
+All logs are tamper-evident: CloudTrail + CloudWatch Logs with integrity validation; log deletion triggers immediate alert
+DOL Access & Retention
+DOL has real-time read access to all audit logs via shared CloudWatch dashboards — no access request required
+Logs retained for minimum 3 years in hot storage; 7 years in cold storage per federal records requirements
+Log search and filtering: DOL staff can query by filing ID, filer EIN, date range, or event type within seconds
+Automated anomaly detection: ML models flag unusual access patterns, bulk downloads, or off-hours admin activity
+Audit report generation: automated monthly audit summaries delivered to DOL in structured format
+SIEM integration: logs forwarded to DOL SIEM if required; standard format (CEF/JSON) supported
+Incident response: all security events traceable end-to-end; forensic log packages generated within 4 hours of request
+Log integrity: AWS CloudTrail log file validation enabled; any tampering detected and alerted automatically
+B3. Audit Logging & Traceability
+B3. Audit Logging & Traceability
+
+19
+Secure Intake & Scanning
+Every attachment scanned for malware and viruses using AWS-native scanning plus third-party AV engine on upload
+File type validation: only permitted formats (PDF, XML, CSV per DER) accepted; all others rejected with structured error
+File size limits enforced at API gateway and upload layer; oversized submissions rejected before scanning
+Attachments stored in isolated S3 bucket separate from filing metadata — never co-mingled with public data
+All attachments encrypted at rest with KMS CMK; unique key per document class (FTI vs. non-FTI)
+Attachment access requires authenticated submission context — documents cannot be accessed without valid filing reference
+Attachment integrity: SHA-256 hash computed on upload and verified on every retrieval — any tampering detected
+FTI-containing attachments automatically flagged and routed to IRS Pub. 1075-compliant isolated handling pipeline
+Distribution & Lifecycle
+Attachments transmitted to downstream agencies (IRS, PBGC, DOL) via encrypted SFTP with file-level hash verification
+NARA archive: attachments packaged in non-proprietary formats with metadata; integrity verified before delivery
+Public dissemination: PII/FTI stripped from attachments before any public release; ML-verified and human-reviewed
+Document retention: attachments retained per DOL/NARA schedule; automated deletion with audit record at end of retention period
+Resubmission handling: updated attachments replace prior versions in controlled manner; prior versions archived with audit trail
+Failed attachment delivery: DLQ captures delivery failures; ops team alerted with document ID and failure context
+Attachment audit: every access, download, or transmission logged with user/system identity and timestamp
+Secure deletion: when retention period expires, attachments deleted using NIST 800-88 guidelines; confirmed in audit log
+B4. Secure Document & Attachment Handling
+B4. Secure Document & Attachment Handling
+
+20
+Continuous Monitoring & Detection
+AWS GuardDuty: continuous threat detection; ML-based anomaly detection identifies unusual API calls, network flows, and access patterns
+AWS Security Hub: aggregates findings from GuardDuty, Inspector, Config, and Macie into single prioritized dashboard
+AWS Config: continuous configuration compliance monitoring; drift from approved baseline triggers immediate alert
+SAST scanning on every code commit in GitLab CI/CD — no code reaches staging without passing security gates
+DAST scanning against staging environment before every production deployment
+Automated dependency scanning (Dependabot/Snyk): known CVEs in third-party libraries flagged within hours of disclosure
+Container image scanning (Amazon ECR): every image scanned before deployment; critical CVE images blocked from EKS
+Annual third-party penetration test plus quarterly vulnerability assessments; results shared with DOL within 5 business days
+Patching SLAs & Remediation
+Critical CVE (CVSS 9.0+): patched within 15 days of disclosure — no exceptions, tracked to closure in Jira with DOL visibility
+High CVE (CVSS 7.0-8.9): patched within 30 days; compensating controls documented if patch requires coordination
+Medium CVE (CVSS 4.0-6.9): patched within 90 days as part of regular sprint cycle
+OS and runtime patching: automated via AWS Systems Manager Patch Manager; compliance reports available to DOL
+Zero-day response: incident response activated within 1 hour of credible zero-day disclosure; DOL notified same day
+Continuous ATO (cATO): security controls validated in CI/CD pipeline; ATO maintained continuously without annual re-accreditation
+POA&M management: all open findings tracked with target dates; reviewed monthly with DOL
+Security metrics reported monthly to DOL: open findings by severity, mean time to patch, scan coverage, and exception count
+B5. Vulnerability Monitoring, Patching & Remediation
+B5. Vulnerability Monitoring, Patching & Remediation
+
+C. Data Quality and Validation
+21
+
+22
+Field-Level Validation Engine
+Schema validation against machine-readable DER (JSON/XML) artifacts on every submission before data enters processing queue
+Field-level checks: data type, format, length, allowable values, and required-field presence validated for every element
+Numeric range validations: contribution amounts, participant counts, and asset values checked against regulatory thresholds
+Date validations: plan year dates, filing deadlines, and fiscal year boundaries enforced with form-year-aware logic
+EIN and plan number validation: format checks plus cross-reference against known entity registry where applicable
+Schedule attachment validation: required schedules enforced based on plan type, participant count, and funding status
+Configurable validation engine: DOL staff add or modify field-level rules in admin panel without code deployment
+Same validation engine used in PATS sandbox and production — third parties test against identical rules before going live
+Cross-Field Validation Rules
+Cross-field consistency: total assets must reconcile across schedules; contributions cannot exceed plan limits; participant counts cross-validated
+Form-type-specific rule sets: Form 5500, 5500-SF, and 5500-EZ each carry distinct cross-field rules enforced independently
+Plan characteristic validations: large vs. small plan rules, funding method requirements, and exemption eligibility cross-checked
+Schedule interdependency: Schedule H totals must align with Schedule A entries; discrepancies flagged before acceptance
+Historical consistency: current-year values cross-referenced against prior-year filing to flag implausible changes
+Entity validation: plan sponsor EIN cross-validated against submitted employer identification data; mismatches flagged
+All cross-field failures return structured error codes with specific field references — filers know exactly what to fix
+Pre-submission validator available via UI and API: filers and third parties run all validation checks before formal submission
+C1. Field-Level & Cross-Field Validations
+C1. Field-Level & Cross-Field Validations
+
+23
+Rule Engine Architecture
+Business rules stored as versioned metadata (JSON rule definitions) — not hardcoded; rules modified in admin panel without code deployment
+Edit-test logic engine executes rules against submission data in real time; rules fire in defined sequence with dependency management
+Form-year tagging: each submission matched to its applicable rule set by form year — no risk of applying wrong-year rules
+Rule versioning: every rule change versioned with effective date, author, and government approval reference
+Configurable severity levels: rules classified as fatal (rejection), warning (advisory), or informational — DOL controls classification
+Rule conflict detection: admin panel flags conflicts between rules before they are published to production
+PATS test harness updated with new rules before each filing season; third parties validate against updated rules in sandbox
+Rule audit trail: every rule execution logged with submission ID, rule ID, outcome, and timestamp — fully auditable by DOL
+Regulatory Alignment
+Rules derived directly from DOL DER artifacts; traceability matrix maps each rule to its regulatory source
+Annual rule review: Satsyil and DOL jointly review rule set before each filing season; changes approved before rollout
+IRS coordination: Form 5558 rules aligned with IRS requirements; rule changes triggered by IRS publications incorporated within 30 days
+PBGC coordination: premium filing rules aligned with PBGC annual guidance; Satsyil participates in annual inter-agency rule review
+Regulatory change management: when DOL issues updated guidance, rule changes implemented and tested before effective date
+Exception reporting: rules suspended or waived by DOL documented with authority and effective period; automatically reinstated
+Rule performance monitoring: rules generating high false-positive rates flagged for DOL review; accuracy metrics tracked monthly
+Documentation: every active rule documented with description, regulatory basis, examples, and error message text
+C2. Business Rule Enforcement
+C2. Business Rule Enforcement
+
+24
+Structured Error Responses
+Every validation failure returns a structured error object: error code, field path, rule ID, plain-language description, and correction guidance
+Error severity classification: fatal errors block submission; warnings allow submission with notation; informational messages advisory only
+Error messages written in plain language per the Plain Language Act — no cryptic codes without explanation
+Field-level error highlighting in IFILE portal: errors shown inline next to the specific field, not just in a summary list
+Bulk filing API error responses include structured JSON with per-record error arrays — third parties process errors programmatically
+Error grouping: related errors grouped by schedule/section so filers address them systematically
+Error persistence: errors saved to filer dashboard so they can return and correct without re-entering the entire form
+Error metrics: DOL receives monthly report on most common error codes, error rates by form type, and correction success rates
+Correction & Resubmission Workflow
+Filers can correct and resubmit without restarting the entire filing workflow — prior valid entries preserved
+Amendment workflow: superseded filings tracked and linked to amended filings; DOL can view full amendment history for any plan
+Pre-submission correction: validation available as a dry-run before formal submission — filers fix all errors before committing
+Partial save: IFILE portal allows saving progress and returning; incomplete filings auto-expire per DOL policy with notification
+Third-party correction flow: API returns errors with filing reference ID; third party corrects and resubmits using same reference
+Contact center integration: error notifications include option to contact support; agent sees same error details as filer
+Duplicate detection: resubmitted corrected filings matched to original via plan/EIN/year key — no duplicate processing
+Correction audit trail: every correction and resubmission logged with timestamp, changed fields, and submitter identity
+C3. Error Messaging & Correction Workflow
+C3. Error Messaging & Correction Workflow
+
+25
+Pre-Submission Tools
+Pre-submission validator available via IFILE web portal and REST API — filers and third parties run complete validation before formally submitting
+Same validation engine as production: pre-submission validator uses identical schema, rules, and business logic — no surprises at submission
+Dry-run mode: complete validation executed without creating a formal submission record — safe to test repeatedly
+Pre-population of prior-year data: IFILE pre-fills fields from the prior accepted filing; filer reviews and updates changed values only
+Third-party pre-validation API: software providers integrate pre-validation into their workflow so filers see errors before export to EFAST2
+PATS sandbox provides production-identical pre-validation for third-party certification testing
+Proven impact: analogous pre-validation gates at NARA reduced ingestion failures by 33%
+Pre-validation results cached for 24 hours: filer can review errors, correct, and resubmit without re-running unchanged sections
+Quality Gates Before Acceptance
+Malformed submissions rejected at intake layer before entering processing queue — SQS never receives invalid submissions
+Schema validation is the first gate: XML/JSON must be well-formed and schema-compliant before any business rule fires
+Business rule gate: all fatal rules must pass before submission is accepted; advisory rules generate warnings, not rejection
+Entity validation gate: EIN and plan number must resolve to a recognized entity before acceptance
+Attachment gate: all required attachments present, file type valid, virus scan clean, and hash verified before acceptance
+Certification gate for third parties: software provider API key must be active and certified for the form type being submitted
+Duplicate gate: fingerprint hash checked against recent submissions; exact duplicates rejected with reference to original
+Every rejected submission receives a structured rejection notice with all failing checks listed — no partial information
+C4. Pre-Submission Validation
+C4. Pre-Submission Validation
+
+26
+Acknowledgment Architecture
+Acknowledgment issued within seconds of submission receipt — before any processing begins; includes unique tracking ID
+Acknowledgment delivered via API response (synchronous), email notification, and filer dashboard update simultaneously
+Acknowledgment content: filing reference ID, submitter identity, form type, plan year, timestamp, and initial acceptance status
+Processing status updates delivered at each pipeline stage: received, validating, processing, distributing, complete
+Filer dashboard: real-time status for all submissions; sortable by status, date, form type, and plan number
+Third-party API polling: status endpoint returns current processing state for any filing by reference ID
+Webhook push: third parties register for push notifications; status updates delivered within 30 seconds of each transition
+Error acknowledgments: if validation fails post-acceptance, structured error notification sent with all failing checks and correction guidance
+Status Codes & Error Responses
+Standardized status code taxonomy: RECEIVED, VALIDATING, ACCEPTED, PROCESSING, DISTRIBUTED, REJECTED, ERROR — consistent across API and UI
+Rejection notices include: rejection code, all failing validation checks with field references, suggested corrections, and contact information
+Distribution confirmation: once filed data reaches IRS, PBGC, and DOL, confirmation status updated with delivery timestamp
+NARA archive confirmation: annual archive delivery confirmed with package ID and delivery receipt in filer record
+Amended filing acknowledgments: amendments acknowledged separately; linked to original filing with supersession notation
+Contact center linkage: acknowledgment emails include support contact; agents see same status in CRM when filer calls
+Third-party error response format: JSON error array with per-record status for bulk submissions — each record acknowledged individually
+All acknowledgments and status events retained for 7 years and available for DOL audit review at any time
+C5. Automated Acknowledgments & Status Responses
+C5. Automated Acknowledgments & Status Responses
+
+D. Annual Rollover and Version Changes
+27
+
+28
+How Fields Are Added or Modified
+Fields defined in machine-readable DER (JSON/XML) metadata — not hardcoded; new fields added by updating the DER artifact in admin panel
+Admin configuration panel: authorized DOL staff add a new field by defining name, type, format, rules, and effective date — no developer involvement
+Field addition triggers automatic: IFILE UI update, API schema update, PATS test case generation, and documentation update
+Effective date control: new fields scheduled to activate on a specific date (e.g., January 1) with no deployment required on that date
+Backward compatibility: new required fields carry a grace period for existing third-party integrators; optional in first season, required in subsequent
+Validation rule modification: changing a field's rules follows same admin panel workflow with government approval gate before publishing
+Testing: every field addition or change automatically generates regression test cases; CI/CD pipeline runs them before any deployment
+Audit trail: every field change recorded with who added it, what the change was, government approval reference, and effective date
+Impact Analysis & Notification
+Impact analysis: admin panel shows how many prior-year submissions would be affected by a new rule — DOL calibrates severity before activating
+Rule testing: all modified rules run against historical submission corpus to measure impact before activation
+Third-party notification: 90-day advance notice of all field or rule changes sent to all registered developer portal subscribers
+PATS update: test harness updated with new fields and rules before notification goes out — developers can test immediately
+Developer conference: annual conference held to walk through all upcoming field and rule changes before new filing season begins
+Documentation updated: every field change reflected in API docs, schema files, and developer portal simultaneously with activation
+Rule deprecation: old rules retired with notice period; deprecated rules flagged in documentation with effective-end date
+Rollback: field additions can be deactivated via admin panel if issues discovered; rollback documented and DOL notified
+D1. Adding or Modifying Fields & Validations
+D1. Adding or Modifying Fields & Validations
+
+29
+Annual Rollover Execution
+New Year's Day rollover: form year activation scheduled and tested in staging months in advance; executes automatically at midnight with zero downtime
+Blue/green deployment: new form year activates by traffic shift — instant rollback to prior year if any issue detected in first 30 minutes
+Form year coexistence: prior-year forms remain active for amended filings; new-year forms activate for current-year submissions simultaneously
+PATS updated: new form year available in sandbox 90 days before activation so third parties can test and certify against new schemas
+Contact center staffed: agents briefed on all changes before January 1; knowledge base updated with new form year FAQs
+IRS and PBGC coordination: distribution files updated for new form year formats; downstream recipients notified 90+ days in advance
+Third-party developer notification: change summary distributed 90 days before rollover; API change log published in developer portal
+Columbus Day peak filing: annual load test conducted before October to validate system handles peak volume with new form year schemas
+Version Management
+Every form version (5500, 5500-SF, 5500-EZ) independently versioned; multiple form years coexist in production simultaneously
+Semantic versioning for APIs: major version = breaking change; minor = additive; patch = fix; clients declare which version they target
+API version support window: minimum 2 prior versions supported concurrently; deprecation announced 12 months in advance
+Schema versioning: XML and JSON schemas versioned with namespace and version identifier; validation engine routes submission to correct version automatically
+Documentation versioned: developer portal maintains changelog and migration guides for every version transition
+Rollback capability: any version activation can be reversed within 15 minutes by shifting traffic back to prior environment
+Version audit: every submission tagged with form version, schema version, and API version — queryable by DOL for compliance analysis
+Version sunset: 18-month sunset period with DOL approval when a form version reaches end-of-life; all filers migrated before decommission
+D2. Annual Rollover & Version Changes
+D2. Annual Rollover & Version Changes
+
+30
+Configuration Architecture
+All form definitions, field metadata, validation rules, and business logic stored as versioned configuration — not in application code
+Configuration stored in version-controlled GitLab repository; every change peer-reviewed and DOL-approved before merge
+Metadata-driven rendering: IFILE portal renders form fields dynamically from DER metadata — no UI code changes required to add or modify fields
+Rule engine reads configuration at runtime: no restart or redeployment needed to activate a rule change scheduled for a future date
+Admin configuration panel: authorized DOL staff manage form definitions, rules, and schedules directly without requiring developer involvement
+Environment promotion: configuration changes flow dev → test → staging → production with automated validation at each gate
+Feature flags: new configuration features activated per-environment and per-user-segment before full rollout — safe, gradual activation
+Configuration audit: every configuration state is reproducible; any prior configuration can be restored from version history within minutes
+Benefits & Proof Points
+Zero code deployment for routine annual updates: field additions, rule changes, and schedule modifications require no developer sprint
+DOL retains control: government staff preview, approve, and schedule configuration changes without waiting for contractor release cycle
+Rapid response: when DOL issues updated guidance, configuration updated and activated within days — not weeks
+Proven at scale: Satsyil's configuration-driven approach at NARA supported hundreds of metadata schema updates without application redeployment
+Cost efficiency: eliminating developer effort for routine annual changes reduces O&M cost; capacity focused on enhancements
+Risk reduction: configuration changes isolated from application code — a misconfigured rule cannot crash the application
+Transparency: all active configuration visible to DOL in admin panel; no hidden logic, no undocumented behavior
+Disaster recovery: if configuration corruption occurs, prior version restored from GitLab history within 15 minutes
+D3. Configuration-Driven & Metadata-Driven Updates
+D3. Configuration-Driven & Metadata-Driven Updates
+
+31
+How We Minimize Code Changes
+Form UI rendered dynamically from DER metadata: adding a new field to the IFILE portal requires no UI code change — only a metadata update
+Validation engine is data-driven: all validation logic defined in configuration; new rules added without touching application code
+API schema auto-generated from DER artifacts: when metadata changes, API schema updates automatically — no manual API code changes
+Documentation auto-generated from DER: developer portal schema documentation regenerated on every metadata update — always in sync
+PATS test cases auto-generated from rule changes: new rules automatically produce test scenarios in the PATS harness
+Scheduled activations: configuration changes staged weeks in advance and activate automatically on target date — no deployment-night intervention
+GitLab CI/CD: when code changes are required, fully automated pipeline completes deployment in under 30 minutes with zero downtime
+Blue/green deployments: even when code changes are needed, zero downtime guaranteed; traffic shifted after health check passes
+Deployment Guardrails & Metrics
+Target: zero code deployments required for annual form rollover — all routine changes handled through configuration pipeline
+Automated regression: every configuration change triggers full regression test suite before activation — no manual testing required
+Deployment frequency: code deployments occur on sprint cadence (bi-weekly); configuration updates can deploy daily if needed
+Rollback SLA: any deployment (code or configuration) rolled back within 5 minutes if health checks fail post-activation
+Change advisory board: all production deployments reviewed in weekly CAB meeting with DOL participation before scheduling
+Deployment blackout windows: no deployments during peak filing periods (Oct 1-15, Jan 1-7) without DOL emergency approval
+Deployment audit: every deployment logged with change description, approver, deployment time, and post-deployment validation results
+Continuous improvement: deployment metrics (frequency, duration, rollback rate) reported to DOL monthly; targets reviewed annually
+D4. Minimizing Code Changes & UI Redeployment
+D4. Minimizing Code Changes & UI Redeployment
+
+E. AI Use in Development, PII Identification, and Testing
+32
+
+33
+AI-Assisted Development Tools
+GitHub Copilot integrated into developer IDE: AI-assisted code completion, boilerplate generation, and in-context documentation drafting
+AI code review: automated PR review tools flag code smells, security anti-patterns, and style violations before human review
+LLM-assisted API documentation: OpenAPI specs and developer portal docs drafted by AI from code annotations; reviewed before publishing
+AI-assisted configuration generation: new DER-based rule configurations drafted by AI from regulatory text; DOL-approved before activation
+AI-powered semantic code search helps developers locate relevant implementation patterns across the large codebase quickly
+Automated boilerplate: microservice scaffolding, test class stubs, and migration scripts generated by AI — reduces developer setup time by 60%+
+AI-assisted code refactoring: legacy code analysis tools identify refactoring opportunities; AI generates candidate refactors for human review
+All AI-generated code reviewed by a human engineer before merge — no AI code enters production without engineer approval
+Governance & Controls
+No federal submission data used for AI model training — all AI tools operate on synthetic or anonymized datasets only
+Approved tool list: only vetted AI development tools permitted; unapproved tools blocked by developer workstation policy
+Code provenance: AI-assisted code flagged in commit history; auditors can identify AI-assisted vs. human-written code
+Security review: AI-generated code undergoes same SAST/DAST scanning as human-written code — no exemptions
+No AI generates security-sensitive code (cryptography, authentication, key management) without mandatory expert human review
+Vendor agreements: AI tool vendors contractually prohibited from training on Satsyil or DOL code or data
+Quarterly review: AI tool usage, code quality metrics, and defect rates reviewed quarterly; tools removed if metrics degrade
+Transparency: DOL informed of all AI development tools in use; tool list maintained in project management documentation
+E1. AI in Code Development
+E1. AI in Code Development
+
+34
+AI-Powered Test Generation
+LLM-driven test case generation: AI analyzes DER requirements and business rule definitions to auto-generate comprehensive test scenarios
+AI-generated edge case discovery: AI models identify boundary conditions and unusual input combinations that human testers commonly miss
+PATS test harness: AI generates certification test scenarios from rule changes automatically — new rules ship with test coverage on day one
+Load test script generation: AI generates JMeter and Locust scripts from API specification; humans review and tune parameters
+Regression suite expansion: AI proposes new regression tests when production defects are fixed — prevents defect recurrence
+Test data synthesis: AI generates realistic synthetic Form 5500 data covering all form types, plan sizes, and edge cases — no real PII used
+Visual regression testing: AI compares IFILE portal screenshots across deployments to detect unintended UI changes
+Section 508/WCAG 2.2 AA: automated accessibility testing on every deployment using axe-core and DHS Trusted Tester methodology
+Coverage & Quality Metrics
+Target: 85%+ code coverage across all microservices; AI-generated tests have increased coverage by 40%+ vs. manual testing alone
+Flaky test detection: AI identifies tests with inconsistent results; flaky tests quarantined and fixed before they mask real defects
+Test gap analysis: AI reports on areas of code not covered by tests; gaps reviewed and prioritized in sprint planning
+Defect prediction: ML model trained on historical defect data predicts which code changes are highest risk; flagged for additional review
+Quality gate: CI/CD pipeline blocks deployment if coverage drops below threshold or AI risk score exceeds limit
+Performance baseline: AI monitors test execution times and flags tests that degrade significantly
+Mutation testing augmented by AI: AI identifies which mutations are most likely to reveal logic gaps; focuses human review on high-risk areas
+Test results reported to DOL monthly: coverage percentage, defect rates, AI-generated vs. manual test ratio, and trend analysis
+E2. AI in Testing & Test Automation
+E2. AI in Testing & Test Automation
+
+35
+Operational Quality AI
+Amazon SageMaker anomaly detection: ML models monitor submission patterns in real time; unusual volumes, error spikes, or processing delays flagged instantly
+Predictive auto-scaling: ML models forecast filing volume based on historical patterns and calendar events; EKS scales ahead of demand
+AI-driven error pattern analysis: recurring error codes analyzed to identify systemic filer issues; DOL informed for potential outreach or guidance updates
+Rejected submission analysis: AI identifies patterns in rejected filings to recommend validation rule improvements that reduce filer burden
+Contact center quality: AI analyzes call transcripts to identify common filer pain points; findings inform IFILE UX improvements
+Data quality scoring: ML model scores each submission on predicted data quality risk; high-risk submissions flagged for enhanced review
+PII detection: supervised ML models detect PII/FTI in submissions, logs, and API responses before public release — proven at USPTO
+Performance degradation detection: AI monitors API latency distributions and flags degradation before it reaches user-visible thresholds
+Improvement Feedback Loops
+Monthly AI quality report to DOL: anomalies detected, error patterns identified, scaling events, and PII detection accuracy metrics
+Closed-loop improvement: AI findings feed back into validation rule updates, IFILE UX improvements, and contact center training
+Model drift monitoring: AI model performance tracked over time; models retrained when accuracy drops below threshold
+Human review of AI recommendations: all AI quality recommendations reviewed by Satsyil quality team before any system change
+Filer experience improvement: AI tracks form completion rates, abandonment points, and error frequency to guide UX enhancements
+Rule effectiveness measurement: AI measures which validation rules generate the most corrections vs. disputes; informs rule refinement
+Third-party quality tracking: AI monitors error rates by software provider; providers with consistently high error rates flagged for outreach
+Continuous model improvement: models updated quarterly using new data; prior model versions archived for comparison and rollback
+E3. AI for Quality Improvement
+E3. AI for Quality Improvement
+
+36
+AI-Assisted Documentation
+API documentation auto-generated from OpenAPI annotations; developer portal always synchronized with deployed API version
+DER-to-plain-language: AI drafts plain-language field descriptions from technical DER specifications; reviewed by Satsyil and DOL before publishing
+Release notes generation: AI summarizes code changes into human-readable release notes; reviewed by project manager before distribution
+Knowledge base articles: AI drafts contact center knowledge base articles from ticket resolutions; reviewed by subject matter expert before publishing
+Test documentation: AI generates test case documentation from test code; keeps test library documentation current without manual effort
+Runbook generation: AI drafts operational runbooks from system architecture and incident history; reviewed and approved by ops lead
+Regulatory change tracking: AI monitors Federal Register and DOL publications for EFAST2-relevant changes; flags potential impacts for human review
+All AI-generated documentation reviewed and approved by a human before publication — AI drafts, humans certify
+AI Defect Detection
+Static analysis: AI-powered SAST tools detect security vulnerabilities, logic errors, and code quality issues on every commit
+Log anomaly detection: AI analyzes application logs in real time to detect error patterns that indicate latent defects before user impact
+Production defect prediction: ML model trained on historical defects predicts which code areas are highest-risk before each release
+Database query analysis: AI monitors slow query logs and flags queries that could cause performance issues under peak load
+Dependency vulnerability monitoring: AI tracks CVE feeds and alerts within hours of a vulnerability affecting any dependency in the stack
+Configuration drift detection: AI compares live infrastructure state against approved baseline; drift detected and alerted within minutes
+API contract testing: AI monitors API response structures against documented contracts; schema violations detected before reaching filers
+All AI defect findings triaged by Satsyil engineering team; findings rated by severity and assigned to sprint with DOL visibility in Jira
+E4. AI for Documentation & Defect Detection
+E4. AI for Documentation & Defect Detection
+
+37
+AI Governance Framework
+Satsyil AI Governance Framework: documented policy governing all AI tool selection, approval, deployment, monitoring, and decommission
+AI inventory: all AI tools and models in use documented with purpose, data inputs, risk classification, and approval status
+No AI adjudicates filing acceptance: all consequential decisions (rejection, hold, referral) require human review — AI provides recommendations only
+Human-in-the-loop mandatory for: filing rejection, PII redaction decisions, security incident classification, and regulatory interpretation
+Model governance: all ML models versioned, documented, and validated before production deployment; prior versions retained for rollback
+Bias monitoring: AI models monitored for disparate impact across filer types; bias findings reviewed quarterly
+AI risk classification: each AI use case assigned risk level (low/medium/high); high-risk uses require DOL awareness and additional controls
+Federal AI policy compliance: all AI use aligned with OMB AI policy, EO 14110, and DOL AI guidance; reviewed annually
+PII Identification & Control
+Supervised ML models trained on federal filing data detect PII (SSN, name, address, account numbers) in submissions, logs, and API responses
+Proven at USPTO: Satsyil's PII detection models achieve 98%+ recall on federal filing data; false negatives reviewed manually
+Automatic redaction: detected PII in non-required fields redacted before data enters public dissemination pipeline
+FTI-specific controls: Form 5558 FTI data handled under separate ML pipeline with additional controls per IRS Pub. 1075
+No submission data used for model training: PII models trained only on DOL-approved synthetic datasets — no real filer data ever used
+PII detection audit: every detection event logged with field, detected entity type, action taken, and confidence score
+False positive management: PII model false positives reviewed by human analyst; corrections fed back to improve model accuracy
+Annual PII control review: DOL reviews PII detection coverage, accuracy metrics, and any incidents involving PII exposure
+E5. AI Governance & PII Identification Controls
+E5. AI Governance & PII Identification Controls
+
+F. Data Migration and Transition Planning
+38
+
+39
+Migration Architecture
+AWS Glue / Databricks ETL pipelines: fully automated, parallelized migration with complete audit logging at every stage
+Legacy EFAST2 data AND document/attachment migration: all filed Form 5500 attachments migrated with SHA-256 hash integrity checks
+Migration phased by data vintage: most recent years migrated first (highest query demand); historical data follows in subsequent phases
+No service interruption: legacy EFAST2 continues serving filers during migration; new system activated only after migration validation completes
+Structured data migration: filing records, plan data, filer profiles, and status histories migrated with full relational integrity
+Unstructured document migration: PDF, XML, and binary attachments migrated to S3 with metadata tagging and hash verification
+FTI data migration: Form 5558 FTI data migrated under separate, audited pipeline meeting IRS Pub. 1075 requirements
+Proven at scale: Satsyil migrated 300M+ digital records for NARA NAC — reducing ingestion failures by 33% and improving data quality by 60%
+Migration Execution & Tracking
+Migration dashboard: real-time visibility into records migrated, records remaining, error count, and throughput — accessible by DOL at all times
+Per-record audit trail: every migrated record logged with source ID, target ID, migration timestamp, and validation outcome
+Incremental migration: delta loads capture new submissions made to legacy system during migration period; no data gap at cutover
+Data profiling: automated profiling identifies data anomalies, format inconsistencies, and encoding issues in legacy data before migration
+Legacy format transformation: legacy XML converted to current schema format with transformation rules documented and DOL-approved
+Migration completion criteria: DOL and Satsyil jointly define acceptance criteria (record counts, hash verification rates, spot-check pass rates)
+Parallelized EKS workers scale to migrate millions of records per day; timeline planned with DOL and tracked weekly
+Post-migration reporting: final migration report delivered to DOL with complete statistics, anomalies encountered, and resolution actions
+F1. Large-Scale Data & Document Migration
+F1. Large-Scale Data & Document Migration
+
+40
+Automated Validation Pipeline
+Source-to-target reconciliation: record counts, field values, and checksum totals compared between legacy and new system at every migration batch
+Field-level validation: every migrated field validated against current DER schema; format conversions verified for correctness
+Business rule re-execution: migrated submissions re-run through current validation engine; discrepancies between legacy and current rules documented
+Referential integrity checks: all foreign key relationships (plan to filer to submission to attachment) verified post-migration
+Hash verification: SHA-256 hash of every migrated document compared against source hash; any mismatch flagged and reprocessed
+Statistical sampling: automated spot-check of 5% random sample with 100% manual review of any anomalies found
+Aggregate reconciliation: total asset values, participant counts, and contribution totals reconciled at plan and year level against legacy reports
+FTI reconciliation: Form 5558 record counts and field values verified by authorized personnel under IRS Pub. 1075 controls
+Reconciliation Reporting
+Daily reconciliation reports: automated reports comparing legacy vs. new system record counts by form type and plan year — delivered to DOL each morning
+Exception reports: all records failing reconciliation checks listed with reason code; Satsyil engineering resolves within 48 hours
+Reconciliation dashboard: DOL-accessible live dashboard showing migration completeness percentage by data category and form year
+Independent verification: DOL retains right to perform independent reconciliation queries against both systems during migration period
+Discrepancy resolution log: every reconciliation discrepancy documented with root cause, resolution action, and timestamp
+Pre-cutover sign-off: DOL formally approves reconciliation results before any production traffic shifts to new system
+Post-cutover reconciliation: 30-day post-cutover monitoring period with daily reconciliation reports to confirm ongoing data integrity
+Reconciliation artifacts retained: all reconciliation reports and exception logs retained for 7 years as part of the migration audit record
+F2. Validation & Reconciliation
+F2. Validation & Reconciliation
+
+41
+Rollback Architecture
+Legacy system maintained in read-only state for 90 days post-cutover: filers can query historical data; no new filings accepted by legacy
+Traffic routing via DNS/ALB: cutover implemented by shifting traffic to new system; reversal takes under 5 minutes — DNS TTL pre-shortened before cutover
+Go/no-go gates: formal decision points before each migration phase and before final cutover; DOL participates in all go/no-go reviews
+Pre-defined rollback trigger criteria: >1% reconciliation failure rate, >5% processing error rate, or critical data integrity issue triggers rollback
+Rollback execution: if trigger criteria met, traffic shifted back to legacy within 5 minutes; DOL notified immediately with incident report
+Data rollback: any data written to new system during failed cutover window identified by timestamp and purged; legacy data remains authoritative
+Rollback drill: full rollback procedure rehearsed in staging 30 days before production cutover; DOL observes the drill
+Post-rollback analysis: root cause analysis completed within 24 hours; remediation plan presented to DOL before rescheduling cutover
+Phased Cutover Strategy
+Phase 1 — Read traffic: new system serves read queries (status, history) while legacy handles writes; validates new system under real load
+Phase 2 — Non-peak write traffic: new system accepts submissions during off-peak hours; legacy remains primary during peak periods
+Phase 3 — Full cutover: all traffic shifted to new system after Phase 2 validation; legacy in read-only mode
+Each phase has defined success criteria and minimum dwell time before advancing; DOL approves each phase transition
+Parallel operation logging: during phased cutover, submissions processed by both systems in shadow mode to validate consistency
+Filer communication: clear communication plan for each cutover phase; filers informed of behavior changes with advance notice
+Third-party notification: all registered third-party software providers notified of cutover schedule 90+ days in advance with API migration guide
+Emergency contacts: 24/7 escalation path to DOL COTR and Satsyil program manager during all cutover windows
+F3. Rollback Planning
+F3. Rollback Planning
+
+42
+Discovery Approach
+30-day structured knowledge transfer with incumbent contractor: workshops, code walkthroughs, and documentation sessions before decommission
+AI-assisted code analysis: ML tools parse legacy codebase to surface undocumented conditional logic, edge-case handlers, and embedded business rules
+Historical data mining: AI analyzes 10+ years of submission outcomes to reverse-engineer business rules that exist only in legacy code behavior
+Incumbent interview program: systematic interviews with current operations and development staff to capture tribal knowledge
+Legacy test execution: existing legacy test suites run against new system to reveal behavioral differences requiring investigation
+Shadow mode validation: during parallel operation, new system results compared against legacy results for identical inputs; differences investigated
+Filer impact analysis: edge-case rules affecting small filer populations identified and verified with DOL subject matter experts
+DOL SME engagement: DOL EBSA program staff consulted on undocumented rules discovered during analysis — authoritative source on regulatory intent
+Documentation & Verification
+Business rule registry: all discovered rules documented with source (code, incumbent interview, historical analysis), regulatory basis, and test cases
+Gap analysis report: delivered to DOL within 60 days of contract award; lists all undocumented rules discovered and proposed treatment
+DOL approval required: every undocumented rule either confirmed by DOL as valid or identified as a legacy defect to be corrected
+Test case coverage: every discovered rule covered by automated test case before new system goes live — no untested rules in production
+Rule traceability: every rule in new system traced to either DER artifact, DOL approval, or incumbent documentation
+Legacy defect inventory: rules discovered to be legacy errors documented separately; DOL decides whether to perpetuate or correct each one
+Post-migration verification: 90-day post-cutover monitoring compares submission outcomes against legacy baseline to catch any missed rules
+Ongoing discovery: rules surfaced by filer complaints or data anomalies documented and added to rule registry during first year of operation
+F4. Handling Undocumented Logic & Business Rules
+F4. Handling Undocumented Logic & Business Rules
+
+43
+Third-Party Transition Plan
+90-day advance notice: all registered third-party software providers notified of API changes, schema updates, and cutover schedule
+Dedicated transition sandbox: production-mirrored environment available for third-party testing 90 days before cutover
+API version compatibility bridge: JSON and XML APIs supported concurrently during transition window; providers migrate on their own timeline
+Third-party recertification: all software providers must recertify via updated PATS before cutover date; certification available from day one of transition period
+Developer portal migration guide: step-by-step guide published for every API change with before/after examples and code snippets
+Dedicated integration support team: named Satsyil engineers available during transition period to assist third-party developers
+Drop-in office hours: weekly virtual sessions during transition period for third-party developers to get real-time guidance
+Annual developer conference: in-person and virtual conference each year to discuss upcoming changes; transition topics featured prominently
+Cutover Support & Monitoring
+IRS/PBGC/DOL drop-box integrations: all downstream agency integrations tested and certified in staging before cutover — no surprises at go-live
+Third-party cutover monitoring: submission volumes and error rates monitored by software provider during cutover window
+Hotline during cutover: dedicated technical support hotline for third-party providers during cutover window; staffed 24/7 for 72 hours post-cutover
+Graceful degradation: if a third-party provider has not migrated by cutover, legacy-format submissions accepted in compatibility mode for 30 days
+Cutover status dashboard: real-time dashboard showing submission volumes by provider; third parties can self-monitor their cutover status
+Post-cutover follow-up: Satsyil contacts all third-party providers 2 weeks post-cutover to confirm successful migration and resolve any issues
+Lessons learned: post-cutover review with major third-party providers to capture feedback for future transition planning
+Ongoing support: dedicated third-party developer support channel maintained permanently — not just during transition
+F5. Transition Support for External Integrators
+F5. Transition Support for External Integrators
+
+G. Third-Party and Bulk Filing
+44
+
+45
+Intake Architecture for Scale
+Amazon SQS intake queue: every bulk submission durably queued the moment it is received — intake API remains responsive even if processing is saturated
+Horizontal scaling: bulk API workers on Amazon EKS auto-scale; each worker handles thousands of submissions per hour
+API rate limiting: per-provider throttling protects system integrity while maximizing legitimate throughput; limits configurable by DOL
+Burst capacity: SQS queues absorb sudden deadline-day filing spikes without any degradation to the intake API response time
+Multi-format intake: JSON-first API with backward-compatible XML accepted in same endpoint; format detected automatically
+Batch submission: single API call accepts multiple filings; each filing within the batch independently processed and acknowledged
+Bulk file upload: SFTP endpoint available for providers who prefer file-based transfer; files automatically ingested into SQS pipeline
+Proven at scale: Satsyil's USPTO EDS platform processes 20M+ transactions/day — EFAST2's 1.4M annual filings is well within demonstrated capacity
+Intake Monitoring & SLAs
+Real-time intake dashboard: queue depth, ingestion rate, and error rate visible to Satsyil ops and DOL in real time
+Intake SLA: acknowledgment issued within 30 seconds of receipt at peak load (95th percentile)
+Queue depth alerts: CloudWatch alarm triggers auto-scaling when queue depth exceeds threshold — prevents backlog buildup
+Provider-level monitoring: submission volumes tracked by software provider; anomalies flagged for investigation
+Intake health check: dedicated health endpoint for third parties to verify API availability before submitting batch runs
+Peak season preparation: intake capacity tested annually with JMeter/Locust simulating Columbus Day peak filing volume
+Graceful degradation: if downstream processing is impaired, intake continues accepting into durable queue; no submissions lost
+Incident notification: if intake API experiences degradation, registered third-party providers notified within 15 minutes via status page and email
+G1. High-Volume Submission Intake
+G1. High-Volume Submission Intake
+
+46
+Multi-Format Processing
+RESTful JSON-first API: primary intake format for all new integrations; JSON schema auto-generated from current DER artifacts
+XML backward compatibility: prior-year XML submissions accepted via version-aware adapter; XML mapped to current internal data model automatically
+Format version routing: submission format and version detected on intake; routed to appropriate validation schema without third-party configuration
+Form type routing: Form 5500, 5500-SF, 5500-EZ, and all schedules processed through form-type-specific validation and business rule pipelines
+Mixed-batch handling: a single bulk submission may contain multiple form types and form years; each filing routed and processed independently
+Schema evolution: new DER versions introduced with namespace versioning; old versions continue processing until sunset date without system changes
+Format validation first: all submissions validated for well-formedness and schema compliance before any business rule processing
+Format error responses: format-level errors returned in same format as submission (JSON error for JSON submission, XML error for XML)
+Multi-Year Coexistence
+Simultaneous form year processing: current year, prior year (amendments), and extension period submissions processed concurrently in production
+Form year tagging: every submission tagged with plan year on intake; validation engine applies form-year-specific rules automatically
+Amendment processing: amended filings linked to original submission; amendment history maintained and queryable for any plan
+Extended deadline handling: filings submitted under extension processed with appropriate form-year rules; extension status tracked and auditable
+Prior-year schema availability: validation schemas for all active form years maintained in production; no filer turned away for prior-year amendment
+Form year sunset: when a form year reaches end-of-life per DOL policy, submissions rejected with clear notification and contact information
+Multi-year reporting: DOL admin panel supports cross-year queries; year-over-year plan data comparison available for compliance analysis
+Third-party testing: PATS sandbox maintains test data for all active form years; providers can test current-year and prior-year submissions simultaneously
+G2. Processing Multiple Formats & Form Years
+G2. Processing Multiple Formats & Form Years
+
+47
+API Security Architecture
+API gateway (Amazon API Gateway): all API traffic flows through managed gateway with WAF, rate limiting, authentication, and request validation
+API key authentication: third-party providers authenticate with scoped API keys issued after PATS certification; keys carry minimum necessary permissions
+NIST SP 800-63 key lifecycle: API keys created, distributed securely, rotated on schedule, and revoked immediately upon any compromise indication
+TLS 1.3 required: all API communications encrypted; older TLS versions and non-encrypted connections rejected at gateway
+FIPS 140-2 validated cryptography: all cryptographic operations use FIPS-validated modules — required for federal systems handling sensitive data
+Request signing: sensitive API operations require HMAC-SHA256 request signatures; prevents replay attacks and tampering
+IP allowlisting: third-party API keys optionally bound to registered IP ranges; requests from unexpected IPs flagged and may be blocked
+SFTP security: SSH key-pair authentication; password authentication disabled; keys rotated on credential lifecycle schedule
+Developer Portal & Sandbox
+Developer portal: comprehensive documentation, API reference, code samples (Python/Java/C#), changelog, and support contact — always in sync with deployed API
+Sandbox environment: full-fidelity PATS sandbox available for testing; same validation engine, same APIs, same schemas as production
+Sandbox credential management: sandbox API keys issued separately from production; sandbox keys cannot access production data
+API versioning: semantic versioning with minimum 2-version support window; deprecation schedule published 12 months in advance
+API contract testing: automated monitoring verifies API responses match documented contracts; schema drift detected before reaching third parties
+Postman collection: maintained and published for all API endpoints; developers import and test immediately without manual setup
+API status page: real-time status for all API endpoints; historical uptime and incident history publicly visible to registered developers
+Security disclosure: responsible disclosure program for third parties who discover API security issues; issues triaged within 24 hours
+G3. Secure Interfaces & APIs
+G3. Secure Interfaces & APIs
+
+48
+Acknowledgment Flow
+Synchronous acknowledgment: bulk API returns acknowledgment within seconds of receiving each filing — before processing begins
+Unique tracking ID per filing: every filing in a bulk batch assigned independent tracking ID; providers track each filing individually
+Batch-level acknowledgment: batch submission acknowledged as a whole with individual filing references embedded
+Asynchronous status updates: processing status delivered via polling endpoint or push webhook as each filing progresses through the pipeline
+Webhook registration: third parties register callback URLs; status updates pushed within 30 seconds of each processing stage transition
+Email notifications: optional email alerts for submission accepted, errors found, and processing complete — configurable by the software provider
+Filer-level notifications: filers receive independent acknowledgment even when submission made through third-party software
+Final disposition notice: when filing fully distributed to DOL, IRS, and PBGC, final confirmation delivered with distribution timestamp
+Error Reporting for Third Parties
+Structured error response: JSON error array with per-filing errors; each error includes filing reference, error code, field path, rule ID, and plain-language description
+Bulk error response: all errors for all filings in a batch returned in single response; third parties process errors programmatically
+Error severity included: each error classified as fatal (must fix to accept) or advisory (accepted with warning)
+Correction guidance: every error includes specific correction instruction — no cryptic codes without explanation
+Error deduplication: identical errors across multiple filings in a batch grouped; one fix corrects all affected filings
+Resubmission reference: rejected filings returned with reference ID used in resubmission; no need to re-send unchanged correct filings
+Error trend reporting: software providers can query their historical error rates by error code via API — supports self-service quality improvement
+Error escalation path: structured process for providers to escalate errors they believe are false positives; Satsyil responds within 2 business days
+G4. Acknowledgments, Status Updates & Error Reporting
+G4. Acknowledgments, Status Updates & Error Reporting
+
+49
+Queue Management
+Amazon SQS decouples intake from processing: every submission durably stored in queue before processing begins — no data loss even if processing is temporarily unavailable
+Exactly-once delivery: SQS and AWS Step Functions use idempotency keys — each filing processed once and only once; no duplicates regardless of retry count
+Queue depth monitoring: CloudWatch tracks queue depth per provider and overall; auto-scaling triggers when depth exceeds threshold
+FIFO ordering: within each provider's submission batch, filings processed in submission order where order matters
+Dead-letter queue (DLQ): filings that exhaust all retries move to DLQ; ops team alerted within 60 seconds with filing ID, provider, and failure context
+DLQ monitoring: DLQ depth tracked separately; any DLQ entries require investigation and resolution — no silent discard
+Priority queuing: DOL can configure priority lanes for specific submission types or peak periods
+Queue visibility: Satsyil and DOL can view real-time queue state; queue metrics included in monthly operational report
+Retry Logic & Exception Handling
+Automated retry with exponential backoff: transient failures retried automatically; backoff prevents thundering herd during recovery from outage
+Retry limits: configurable per error class; transient errors retry up to 5 times; permanent errors (validation failures) do not retry
+Retry visibility: each retry logged with attempt number, delay, and outcome; full retry history available for any filing
+Exception classification: transient (network/timeout), permanent (validation failure), or system (infrastructure) — different handling for each class
+System exception escalation: infrastructure-level exceptions trigger PagerDuty alert to ops team; resolved within SLA regardless of time of day
+Provider notification on permanent failure: when a filing exhausts retries, provider receives structured failure notice with all applicable error codes
+Exception trending: exception rates by type tracked weekly; increases trigger root cause investigation before they become incidents
+Recovery SLA: no filing left in DLQ for more than 24 hours without resolution or explicit DOL-approved exception
+G5. Reliability Controls — Queuing, Retries & Exception Handling
+G5. Reliability Controls — Queuing, Retries & Exception Handling
+
+50
+Pre-Cutover Transition Program
+Transition announced 12 months before cutover: all registered software providers notified via developer portal, email, and annual developer conference
+Transition guide published 9 months before cutover: detailed migration documentation covering every API change, schema difference, and new requirement
+Compatibility bridge: legacy XML API maintained alongside new JSON API for full transition window — providers choose their own migration pace
+Dedicated transition sandbox: production-identical PATS environment available for testing 9 months before cutover; providers certify on their schedule
+Phased PATS recertification: certification open from 9 months before cutover; early-completing providers receive priority support at go-live
+Integration support team: named Satsyil engineers assigned to assist top-volume providers with integration questions during transition period
+Weekly office hours: virtual drop-in sessions for all third-party developers during transition period; recorded and posted for async viewing
+Annual developer conference: full-day event covering all transition details with hands-on labs for new API and PATS certification walkthrough
+Cutover & Post-Cutover Support
+Cutover readiness dashboard: each provider's certification status visible; DOL and Satsyil monitor overall readiness before approving cutover date
+72-hour cutover support: dedicated technical hotline staffed 24/7 for 72 hours post-cutover; major providers have named point of contact
+Compatibility mode: providers not certified by cutover accepted in legacy-format compatibility mode for 30 days; DOL approves extension policy
+Post-cutover monitoring: submission volumes and error rates tracked by provider for 90 days; providers with anomalies contacted proactively
+Post-cutover follow-up: Satsyil contacts all providers 2 weeks post-cutover to confirm successful migration and resolve any issues
+Legacy API sunset: after full transition window, legacy API deprecated with 90-day notice; no provider left without DOL approval
+Lessons learned: post-cutover retrospective with major providers and DOL to capture feedback and improve future transition processes
+Permanent support channel: dedicated third-party developer support channel maintained indefinitely — not just during transition window
+G6. Transition Strategy for Existing Third-Party Filers
+G6. Transition Strategy for Existing Third-Party Filers
+
+H. Contact Center
+51
+
+52
+Multi-Channel Accessibility
+AWS Connect cloud contact center: toll-free phone, email, web chat, and self-service portal — all channels available to filers and third-party providers
+Amazon Lex AI chatbot and IVR: 24/7 automated self-service for common inquiries (filing status, deadline information, password reset)
+Web portal self-service: authenticated filers access submission status, error details, and filing history without contacting an agent
+Email support: structured email intake with automated routing to appropriate specialist queue; response SLA tracked and reported
+Callback scheduling: filers who cannot wait on hold can schedule a callback at a preferred time; completed within scheduled window
+Multilingual support: translation services integrated for non-English speaking inquirers; primary languages identified from filer demographics
+All channels accessible from mobile device: responsive contact portal works on phone and tablet; no desktop-only limitations
+After-hours automated response: automated system acknowledges after-hours inquiries with expected response time and self-service options
+Section 508 & Disability Access
+WCAG 2.2 AA compliance: all contact center web interfaces meet accessibility standards; tested quarterly with DHS Trusted Tester methodology
+TTY/TDD relay service: hearing-impaired callers supported via Federal Relay Service (1-800-877-8339); agents trained on relay call etiquette
+Screen reader compatibility: contact portal fully navigable by keyboard and screen reader; no mouse-only interactions
+Captioning: all recorded training and informational videos captioned; live captioning service available on request
+Cognitive accessibility: contact portal designed with plain language, clear navigation, and simple task flows per Plain Language Act
+Agent disability awareness training: all agents trained on accessible communication and accommodating diverse needs
+Accessibility testing: automated accessibility scanning on every portal deployment; manual review by accessibility tester annually
+Feedback mechanism: inquirers can report accessibility barriers through dedicated channel; issues triaged and resolved within 30 days
+H1. Accessibility for All Inquirers
+H1. Accessibility for All Inquirers
+
+53
+Call Recording Architecture
+AWS Connect native recording: all inbound and outbound calls recorded automatically; recording begins at call connection and ends at disconnect
+Screen recording: agent screen activity recorded during calls on request (configurable by DOL); supports dispute resolution and training
+Chat transcript recording: all web chat interactions logged as full transcripts with timestamps; archived alongside call recordings
+Email thread archiving: all email inquiries and responses archived in CRM (Salesforce/ServiceNow) with full thread history
+Voicemail recording: voicemails recorded and transcribed via Amazon Transcribe; text transcript attached to CRM case automatically
+Recording metadata: every recording tagged with call ID, agent ID, filer ID (if authenticated), inquiry category, and call duration
+Recording quality: stereo recording preserves agent and caller audio separately; enables independent quality review of each party
+Consent and notification: callers notified of recording per applicable regulations; consent documented in call record
+Storage & Retrieval
+Secure storage: recordings stored in encrypted S3 bucket with KMS CMK; access restricted to authorized personnel only
+Retention policy: recordings retained for minimum 3 years per federal records requirements; configurable per DOL policy
+Search and retrieval: recordings searchable by call ID, agent, date range, inquiry category, and filer ID; retrieved in seconds
+Transcript search: Amazon Transcribe generates searchable text transcripts of all recordings; keyword search across all recorded calls
+DOL access: DOL authorized personnel retrieve any recording via secure portal without requesting through Satsyil
+Export capability: recordings exportable in standard formats (MP3/WAV) for DOL review or legal proceedings
+Audit log: every recording access logged with requester identity, access time, and purpose; tamper-evident
+Availability SLA: recordings available for retrieval within 1 hour of call completion; archived recordings retrieved within 24 hours
+H2. Recording Inquiries & Contractor Responses
+H2. Recording Inquiries & Contractor Responses
+
+54
+Government Monitoring Capabilities
+Live monitoring: DOL authorized personnel can listen to any active call in real time via AWS Connect supervisor dashboard
+Live dashboard: real-time view of queue depth, average wait time, active calls, and agent availability — DOL-accessible at all times
+Barge-in capability: DOL supervisor can join a live call to provide guidance to agent or speak directly with filer
+Silent monitoring: DOL monitors calls without agent or caller awareness — supports unbiased quality assessment
+Recording review portal: DOL staff access recorded calls via secure web portal; filter by date, agent, inquiry type, or filer ID
+Quality scorecard review: DOL can view Satsyil quality scores for any call; scores based on standardized rubric agreed with DOL
+Trend reports: DOL receives monthly reports on call volume, handle time, first-call resolution rate, and quality scores
+Ad-hoc query: DOL can request call samples meeting specific criteria (e.g., calls about a specific form type) for targeted review
+Contractor Quality Monitoring
+Contractor QA team: dedicated QA analysts review minimum 5% of calls per agent per week using standardized quality rubric
+AI quality scoring: Amazon Connect Contact Lens analyzes all calls for sentiment, dead air, compliance phrases, and script adherence
+Quality rubric: scoring criteria developed jointly with DOL; covers accuracy, professionalism, accessibility, and issue resolution
+Agent feedback: QA results shared with agents within 48 hours; coaching sessions scheduled for scores below threshold
+Agent training: recordings used as training material; best-practice calls shared with all agents; problematic patterns addressed in team training
+Performance improvement plans: agents with sustained quality issues enrolled in structured improvement program with documented milestones
+Quality trend monitoring: if quality scores drop across multiple agents, systemic issue investigation triggered; DOL notified of findings
+Monthly quality report to DOL: overall quality scores, distribution by rubric category, top issues, and improvement actions taken
+H3. Live & Recorded Inquiries for Monitoring
+H3. Live & Recorded Inquiries for Monitoring
+
+55
+AWS Connect Cost Model
+Pay-per-minute pricing: AWS Connect charges per active call minute — no per-seat licensing fees; estimated 40-60% cost reduction vs. legacy or high-license solutions
+No hardware procurement: AWS Connect is fully cloud-based; zero on-premise hardware, PBX, or telephony equipment required
+Existing DOL toll-free number ported to AWS Connect: no new phone number procurement; seamless transition for filers
+Browser-based softphones: agents work from any device with a browser and headset — no proprietary desk phones, no VPN required
+Elastic capacity: agent seats activated and deactivated dynamically; no minimum seat commitment; scale up for October peak, scale down in off-season
+Amazon Lex chatbot: AI self-service handles 40%+ of routine inquiries (status checks, deadline questions) at a fraction of agent cost
+IVR deflection: well-designed IVR resolves simple inquiries before reaching an agent; deflection rate tracked and optimized continuously
+No additional CRM licensing: AWS Connect integrates with ServiceNow or Salesforce (DOL's existing systems) at no additional CRM cost
+Cost Transparency & Governance
+Monthly cost reporting: AWS Connect usage costs reported to DOL monthly with breakdown by channel (phone, chat, IVR) and agent hour
+Cost per contact metric: DOL tracks cost-per-inquiry monthly; target baseline established in contract; continuous improvement tracked against target
+Workforce management: predictive staffing model scales agents to match forecast volume; prevents overstaffing during off-peak periods
+Peak season staffing: contractor surges agent count for October and January peak periods using cross-trained staff; no separate licensing cost
+Self-service investment: investment in IVR and chatbot improvements reduces live agent volume over time; ROI reported to DOL annually
+Cost avoidance reporting: DOL receives annual report estimating cost avoidance from IVR deflection, chatbot handling, and first-call resolution
+Vendor comparison: if DOL requests, Satsyil provides annual comparison of AWS Connect costs vs. alternative solutions; no hidden costs
+Exit-ready: no proprietary contact center lock-in; call recordings, transcripts, and CRM data fully exportable if DOL elects to change providers
+H4. Cost-Effective Solutions Without High Licensing Costs
+H4. Cost-Effective Solutions Without High Licensing Costs
+
+Similar Application Demonstration
+56
+
+57
+1. Dynamic Form Entry & Validation: Live submission workflow with field-level validation, cross-field business rule enforcement, and real-time error messaging with correction guidance.
+2. Attachment & Document Handling: Upload, virus scan, and secure attachment to a submission record; PII detection and automated redaction demonstrated live.
+3. Submission Lifecycle & Status Tracking: End-to-end flow: intake queue → validation → processing → acknowledgment → status dashboard with unique tracking ID.
+4. Admin & Configuration Panel: Adding/modifying a business rule without code; form year version management and schema update, no deployment required.
+5. Bulk Filing API: Third-party bulk submission via API with structured error response, retry handling, and PATS certification workflow.
+6. Contact Center Integration: CRM inquiry log tied to a specific submission record; call recording access and agent knowledge base demonstrated.
+Similar Application Demonstration
+Similar Application Demonstration
+Similar Application: USPTO Enterprise Data Services (EDS) Platform — 20M+ transactions/day, 10+ PB federal dataFallback Video: 5-minute pre-recorded video prepared covering all 6 demo areas above — available immediately if any live technical issue arises
+
+
+
+Government Areas of Interest
+58
+
+59
+How Satsyil Addresses DOL’s Key Areas of Interest
+Architecture at Scale: Multi-AZ EKS + SQS queuing handles 1.4M+ filings; CDN serves 90% of static traffic; auto-scaling fires at 70% CPU — zero manual intervention.
+Quality Controls & Queuing: Every submission enters SQS for exactly-once processing; dead-letter queues capture failures; automated retry with exponential backoff; ops team alerted within 60 seconds.
+Annual Changes: Config-driven rules engine, DOL staff modify fields/rules in admin panel, no code deployment, no downtime. Third parties get 90-day advance notice; backward-compatible APIs maintained.
+System Currency & Security: Continuous cATO via DevSecOps; SAST/DAST on every commit; automated STIG compliance; GuardDuty + Security Hub real-time detection; critical CVE patching within 15 days.
+Migration Validation: Parallel run with field-level reconciliation at every ETL stage; automated row counts, checksums, and business rule re-execution on migrated data; phased go/no-go cutover gates.
+External Integrator Transition: 90-day advance notice; dedicated sandbox; API version bridge (JSON + XML); third-party recertification via updated PATS; dedicated integration support team at cutover.
+Contact Center: AWS Connect with Lex IVR for 24/7 self-service; all calls recorded with searchable transcripts; government has live dashboard access and call recording review rights; quality scored automatically.
+AI for Delivery: AI-assisted code gen and test case generation accelerate development; ML models detect PII/FTI pre-release; anomaly detection flags irregular patterns; all AI governed with human-in-the-loop for consequential actions.
+Government Areas of Interest
+Key Interests
+
+Q&A
+60
+
+61
+
+
+Venugopal Ankinapalli, President
+Email: venugopal.ankinapalli@satsyil.com
+Tel: (703) 689-1842  |  www.satsyil.com
+Questions & Answers
